@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# Backlight brightness controls. Use freely and adjust sysfs directory to your 
+# backlight type. 
+# $author Brice Burgess @iceburg
+
+# Must be run as root. To allow members in input group to run this script 
+# without password, add the following line to sudoers file
+#   %input ALL=(ALL) NOPASSWD: /usr/local/bin/kbd_light
+
+# To bind this script with keys in LXQt, modify 
+#   .config/lxqt/globalkeyshortcuts.conf
+# and maybe(?)
+#   /etc/xdg/lxqt/globalkeyshortcuts.conf
+# Find [XF86KbdBrightnessDown.35], replace Exec line with
+#   Exec=sudo, kbd_light, down
+# Find [XF86KbdBrightnessUp.36], replace Exec line with
+#   Exec=sudo, kbd_light, up
+
+# Modified by Fanbo He for a MacBook Pro 13" 2015 running LXQt on Arch Linux
+sysfs="/sys/class/leds/smc::kbd_backlight"
+steps=5
+
+max=`cat ${sysfs}/max_brightness`
+level=`cat ${sysfs}/brightness`
+step=`expr $max / $steps`
+min=0
+
+usage()
+{
+script=${0##*/}
+echo
+echo "Invalid usage of ${script}!"
+echo "  $1"
+echo "----------------"
+echo "$script up     : increases brightness"
+echo "$script down   : decreases brightness"
+echo "$script set #  : sets brightness to # (integer)"
+echo "----------------"
+echo
+
+exit 1
+}
+
+set_brightness()
+{
+level=$1
+if [ $level -lt $min ] ; then
+ level=$min
+elif [ $level -gt $max ] ; then
+ level=$max
+fi
+echo $level > $sysfs/brightness 
+}
+
+case "$1" in
+  up)
+    let "level+=$step"
+    set_brightness $level 
+    ;;
+  down)
+    let "level-=$step"
+    set_brightness $level 
+    ;;
+  set)
+    if [[ ! $2 =~ ^[[:digit:]]+$ ]]; then
+     usage "second argument must be an integer"
+    fi
+
+    set_brightness $2
+    ;;
+  *)
+    usage "invalid argument"
+esac
